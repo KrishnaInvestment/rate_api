@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  postgres:
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+
+  flask:
+    build:
+      context: ./flask_app
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./flask_app:/flask_app
+    ports:
+      - "${API_HOST}:5000:5000"
+    depends_on:
+      - postgres
