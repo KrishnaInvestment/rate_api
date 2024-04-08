@@ -3,17 +3,56 @@ from datetime import datetime
 
 from utils.logger import configure_logger
 from custom.errors import ValidationError, SQLInjectionError
+from utils.constants import LENGTH_OF_STRING, REGEX_FOR_SQL_INJECTION
 
 logger = configure_logger(__name__)
 
-# The logest length of region is 17.
-# So aribitrary maximum length
-LENGTH_OF_STRING = 25
-
-REGEX_FOR_SQL = r"(\s*([\0\b\'\"\n\r\t\%\_\\]*\s*(((select\s*.+\s*from\s*.+)|(insert\s*.+\s*into\s*.+)|(update\s*.+\s*set\s*.+)|(delete\s*.+\s*from\s*.+)|(drop\s*.+)|(truncate\s*.+)|(alter\s*.+)|(exec\s*.+)|(\s*(all|any|not|and|between|in|like|or|some|contains|containsall|containskey)\s*.+[\=\>\<=\!\~]+.+)|(let\s+.+[\=]\s*.*)|(begin\s*.*\s*end)|(\s*[\/\*]+\s*.*\s*[\*\/]+)|(\s*(\-\-)\s*.*\s+)|(\s*(contains|containsall|containskey)\s+.*)))(\s*[\;]\s*)*)+)"
-
 
 class Validation:
+    def detect_sql_injection(self, input_string):
+        regex = re.compile(REGEX_FOR_SQL_INJECTION, re.IGNORECASE)
+        is_sql = regex.search(input_string)
+        if is_sql:
+            raise SQLInjectionError("Potential SQL Injection Detected")
+
+    def _validate_date(self, value, format="%Y-%m-%d"):
+        """
+        Validates a date string.
+
+        Args:
+            value (str): The date string to validate.
+            format (str): Format of the date
+
+        Raises:
+            ValueError: If the date string is not in the expected format.
+        """
+        try:
+            datetime.strptime(value, format)
+        except ValueError as e:
+            logger.error(f"Failed to parsed date: {value} Error: {e}")
+            raise e
+
+    def _validate_str(self, value, string_length, check_sql_injection=True):
+        """
+        Validates the origin or destination string.
+
+        Args:
+            value (str): The origin or destination string to validate.
+            string_length (int) : The integer limit of string
+            check_sql_injection (bool) : If its true then check potential sql injection
+
+        Raises:
+            ValueError: If the length of the string is more than the specified limit.
+        """
+
+        if len(value) >= string_length:
+            logger.error(f"Length of {value} is {len(value)}. Expected limit {string_length}")
+            raise ValueError(f"The provided string have exceeds length limit of {string_length}")
+        if check_sql_injection:
+            self.detect_sql_injection(value)
+
+
+class RateAPIValidation(Validation):
     def __init__(self):
         """
         Initializes the Validation class with a mapping of validation functions for each parameter.
@@ -24,12 +63,6 @@ class Validation:
             "origin": self.validate_origin_dest,
             "destination": self.validate_origin_dest,
         }
-
-    def detect_sql_injection(self, input_string):
-        regex = re.compile(REGEX_FOR_SQL, re.IGNORECASE)
-        is_sql = regex.search(input_string)
-        if is_sql:
-            raise SQLInjectionError("Potential SQL Injection Detected")
 
     def validate_date(self, value):
         """
@@ -42,10 +75,9 @@ class Validation:
             ValueError: If the date string is not in the expected format.
         """
         try:
-            datetime.strptime(value, "%Y-%m-%d")
+            self._validate_date(value, "%Y-%m-%d")
             logger.info(f"Successfully parsed date: {value}")
-        except ValueError as e:
-            logger.error(f"Failed to parsed date: {value} Error: {e}")
+        except ValueError:
             raise ValueError("Invalid date format. Expected format YYYY-MM-DD")
 
     def validate_origin_dest(self, value):
@@ -59,11 +91,7 @@ class Validation:
             ValueError: If the length of the string is more than the specified limit.
         """
 
-        if len(value) >= LENGTH_OF_STRING:
-            logger.error(f"Length of {value} is {len(value)}. Expected limit {LENGTH_OF_STRING}")
-            raise ValueError(f"The provided string have exceeds length limit of {LENGTH_OF_STRING}")
-        else:
-            self.detect_sql_injection(value)
+        self._validate_str(value, LENGTH_OF_STRING)
 
     def validate_rates_args(self, params):
         """

@@ -1,77 +1,27 @@
-from flask import current_app
-import os
-import psycopg2
 from pathlib import Path
 import unittest
 
 from app import create_app
-from utils.db import DBUtils
+from db_engine.db import DB
 from config import TestConfig
+from utils.test import TestDBUtils
 
 
-class TestRateAPIResponse(unittest.TestCase):
+class TestRateAPI(unittest.TestCase, TestDBUtils):
     """
     Unit tests for API responses with database operations.
     """
 
-    def db_dev_connection(self):
-        """
-        Establishes a connection to the development database.
-        """
-        conn = psycopg2.connect(
-            dbname=os.getenv("POSTGRES_DB"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            host=os.getenv("POSTGRES_HOST"),
-        )
-        return conn
-
-    def db_test_connection(self):
-        """
-        Establishes a connection to the test database.
-        """
-        conn = psycopg2.connect(
-            dbname=os.getenv("TEST_POSTGRES_DB"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            host=os.getenv("POSTGRES_HOST"),
-        )
-        return conn
-
-    def create_test_database(self):
-        """
-        Creates the test database.
-        """
-        query = f"CREATE DATABASE {current_app.config['DB_NAME']}"
-        conn = self.db_dev_connection()
-        conn.autocommit = True
-        cursor = conn.cursor()
-        cursor.execute(query)
-        cursor.close()
-        conn.close()
-
-    def drop_test_database(self):
-        """
-        Drops the test database.
-        """
-        query = f"DROP DATABASE {current_app.config['DB_NAME']}"
-        conn = self.db_dev_connection()
-        conn.autocommit = True
-        cursor = conn.cursor()
-        cursor.execute(query)
-        cursor.close()
-        conn.close()
-
-    def load_data(self):
+    def load_rateapi_data(self):
         """
         Loads data into the test database from an SQL file.
         """
-        sql_file_path = Path("tests/test_sql.sql")
+        sql_file_path = Path("tests/sql_data/test_sql.sql")
 
         # Open and read the SQL file
         with sql_file_path.open(mode="r") as sql_file:
             # Execute the SQL commands in the file
-            conn = self.db_test_connection()
+            conn = DB().get_db_connection()
             cursor = conn.cursor()
             cursor.execute(sql_file.read())
             conn.commit()
@@ -87,7 +37,7 @@ class TestRateAPIResponse(unittest.TestCase):
         self.context = self.app.app_context()
         self.context.push()
         self.create_test_database()
-        self.load_data()
+        self.load_rateapi_data()
 
     def teardown_method(self, method):
         """
@@ -129,17 +79,17 @@ class TestRateAPIResponse(unittest.TestCase):
         Test the counts of tables in the database.
         """
         # Testing Price_detail table count
-        price_detail_count = DBUtils().execute_query("SELECT count(*) FROM price_detail;")
+        price_detail_count = DB().execute_query("SELECT count(*) FROM price_detail;")
         self.assertEqual(price_detail_count[0][0], 18, "Count of price_detail table is not equal")
 
         # Testing Route table count
-        price_detail_count = DBUtils().execute_query(
+        price_detail_count = DB().execute_query(
             "SELECT count(*) FROM route;", "Count of route table is not equal"
         )
         self.assertEqual(price_detail_count[0][0], 4)
 
         # Testing Region table count
-        price_detail_count = DBUtils().execute_query(
+        price_detail_count = DB().execute_query(
             "SELECT count(*) FROM regions;", "Count of regions table is not equal"
         )
         self.assertEqual(price_detail_count[0][0], 9)
