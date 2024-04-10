@@ -3,7 +3,7 @@ from datetime import datetime
 
 from utils.logger import configure_logger
 from custom.errors import ValidationError, SQLInjectionError
-from utils.constants import LENGTH_OF_STRING, REGEX_FOR_SQL_INJECTION
+from utils.constants import MIN_LENGTH_OF_STRING, MAX_LENGTH_OF_STRING, REGEX_FOR_SQL_INJECTION
 
 logger = configure_logger(__name__)
 
@@ -32,24 +32,45 @@ class Validation:
             logger.error(f"Failed to parsed date: {value} Error: {e}")
             raise e
 
-    def _validate_str(self, value, string_length, check_sql_injection=True):
+    def _validate_str(self, value, string_min_length, string_max_length, check_sql_injection=True):
         """
-        Validates the origin or destination string.
+        Validates the string value to validate.
 
         Args:
-            value (str): The origin or destination string to validate.
-            string_length (int) : The integer limit of string
+            value (str): String value to validate.
+            string_min_length (int) : The lower length limit of string
+            string_max_length (int) : The upper length limit of string
             check_sql_injection (bool) : If its true then check potential sql injection
 
         Raises:
             ValueError: If the length of the string is more than the specified limit.
         """
 
-        if len(value) >= string_length:
-            logger.error(f"Length of {value} is {len(value)}. Expected limit {string_length}")
-            raise ValueError(f"The provided string have exceeds length limit of {string_length}")
+        if (string_min_length > len(value)) or (len(value) > string_max_length):
+            logger.error(
+                f"Length of {value} is {len(value)}. Expected limit is between {string_min_length} and {string_max_length}"
+            )
+            raise ValidationError(
+                f"The provided string have exceeded length limit. It should be between {string_min_length} and {string_max_length}"
+            )
         if check_sql_injection:
             self.detect_sql_injection(value)
+
+    def _validate_date_order(self, start, end, date_format):
+        """
+        Validate the order of dates
+        Args:
+            start: Start date string
+            end: End date string
+            date_format: Date format string
+        """
+        start_date = datetime.strptime(start, date_format)
+        end_date = datetime.strptime(end, date_format)
+
+        if start_date > end_date:
+            message = f"Order of start date {start} and end date {end} mismatched"
+            logger.error(message)
+            raise ValueError(message)
 
 
 class RateAPIValidation(Validation):
@@ -88,10 +109,16 @@ class RateAPIValidation(Validation):
             value (str): The origin or destination string to validate.
 
         Raises:
-            ValueError: If the length of the string is more than the specified limit.
+            ValueError, SQLInjectionError
         """
-
-        self._validate_str(value, LENGTH_OF_STRING)
+        try:
+            self._validate_str(value, MIN_LENGTH_OF_STRING, MAX_LENGTH_OF_STRING)
+        except ValidationError:
+            raise ValidationError(
+                f"The length of Origin/Dest should be between {MIN_LENGTH_OF_STRING} and {MAX_LENGTH_OF_STRING}"
+            )
+        except SQLInjectionError:
+            raise SQLInjectionError("The Value of Origin/Dest have possible SQL injection")
 
     def validate_rates_args(self, params):
         """
@@ -130,4 +157,8 @@ class RateAPIValidation(Validation):
                 # Log and raise a ValidationError if any validation error occurs
                 logger.error(f"Validation error for key {key} and value {value}")
                 raise ValidationError(str(e))
+
+        self._validate_date_order(
+            param_data.get("date_from"), param_data.get("date_to"), "%Y-%m-%d"
+        )
         return param_data

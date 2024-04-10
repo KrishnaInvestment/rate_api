@@ -65,6 +65,16 @@ class TestRateAPI(unittest.TestCase, TestDBUtils):
         message = "Invalid date format. Expected format YYYY-MM-DD"
         self.assertEqual(response.json["message"], message)
 
+    def test_non_validated_regions(self):
+        """
+        Test if the date format is valid.
+        """
+        url = "rates/?date_from=2016-01-03&date_to=2016-01-03&origin=CNSGH&destination="
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+        message = "The length of Origin/Dest should be between 5 and 25"
+        self.assertEqual(response.json["message"], message)
+
     def test_sql_injection(self):
         """
         Test if SQL injection is prevented.
@@ -72,7 +82,18 @@ class TestRateAPI(unittest.TestCase, TestDBUtils):
         url = "rates/?date_from=2023-01-03&date_to=2016-01-03&origin=CNSGH&destination=select slug from regions"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json["message"], "Potential SQL Injection Detected")
+        message = "The Value of Origin/Dest have possible SQL injection"
+        self.assertEqual(response.json["message"], message)
+
+    def test_non_available_regions_data(self):
+        """
+        Test if SQL injection is prevented.
+        """
+        url = "rates/?date_from=2016-01-03&date_to=2016-01-03&origin=CNSGH&destination=CNSGH"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        message = "Average price is not available for given period and regions"
+        self.assertEqual(response.json["message"], message)
 
     def test_table_counts(self):
         """
@@ -110,7 +131,8 @@ class TestRateAPI(unittest.TestCase, TestDBUtils):
         url = "rates/?date_from=2016-01-01&date_to=2016-01-01&origin=CNYTN&destination=NOFRO"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.json[0].get("average_price"))
+        message = "Average price is not available for given period and regions"
+        self.assertEqual(response.json["message"], message)
 
     def test_api_response_with_main_regions(self):
         """

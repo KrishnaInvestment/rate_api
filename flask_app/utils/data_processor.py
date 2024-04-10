@@ -10,9 +10,16 @@ class RateAPIDataFormat:
     def format_avg_price_query_data(self, raw_query_data):
         # Convert list of lists to list of dictionaries
         logger.info("Starting avg price query data formatting")
-        list_of_dicts = [dict(zip(self.avg_price_query_keys, row)) for row in raw_query_data]
+        list_of_dicts = []
+
+        # For checking if there is any price in the queried data
+        is_price_available = False
+        for row in raw_query_data:
+            list_of_dicts.append(dict(zip(self.avg_price_query_keys, row)))
+            if row[1]:
+                is_price_available = True
         logger.info("Completed avg price query data formatting")
-        return list_of_dicts
+        return is_price_available, list_of_dicts
 
     def create_avg_price_query_args(self, validated_data):
         # Extract region and date parameters from validated data
