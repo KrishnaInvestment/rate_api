@@ -3,27 +3,29 @@ from utils.logger import configure_logger
 logger = configure_logger(__name__)
 
 
+def return_message_if_no_price(func):
+    def wrapper(self, raw_query_data):
+        is_price_available = any(row[1] for row in raw_query_data)
+        if not is_price_available:
+            return {"message": "Average price is not available for given period and regions"}
+
+        result = func(self, raw_query_data)
+        return result
+
+    return wrapper
+
+
 class RateAPIDataFormat:
     def __init__(self):
         self.avg_price_query_keys = ["day", "average_price"]
 
+    @return_message_if_no_price
     def format_avg_price_query_data(self, raw_query_data):
         # Convert list of lists to list of dictionaries
         logger.info("Starting avg price query data formatting")
-        list_of_dicts = []
-
-        # For checking if there is any price in the queried data
-        # If there is no price then returning a appropriote message
-        is_price_available = False
-        for row in raw_query_data:
-            list_of_dicts.append(dict(zip(self.avg_price_query_keys, row)))
-            if row[1]:
-                is_price_available = True
+        list_of_dicts = [dict(zip(self.avg_price_query_keys, row)) for row in raw_query_data]
         logger.info("Completed avg price query data formatting")
-        if is_price_available:
-            return list_of_dicts
-        else:
-            return {"message": "Average price is not available for given period and regions"}
+        return list_of_dicts
 
     def create_avg_price_query_args(self, validated_data):
         # Extract region and date parameters from validated data
