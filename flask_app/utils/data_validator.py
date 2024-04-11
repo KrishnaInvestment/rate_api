@@ -8,7 +8,12 @@ from custom.errors import (
     DateOrderMismatchedError,
     StringLengthExceedError,
 )
-from utils.constants import MIN_LENGTH_OF_STRING, MAX_LENGTH_OF_STRING, REGEX_FOR_SQL_INJECTION
+from utils.constants import (
+    MIN_LENGTH_OF_STRING,
+    MAX_LENGTH_OF_STRING,
+    REGEX_FOR_SQL_INJECTION,
+    REGEX_FOR_STR_LENGTH,
+)
 
 logger = configure_logger(__name__)
 
@@ -34,7 +39,12 @@ class Validation:
             ValueError: If the length of the string is more than the specified limit.
         """
 
-        if (string_min_length > len(value)) or (len(value) > string_max_length):
+        regex_for_str_validation = REGEX_FOR_STR_LENGTH % (string_min_length, string_max_length)
+        regex = re.compile(regex_for_str_validation, re.IGNORECASE)
+        is_string_valid = regex.search(value)
+
+        logger.info(f"Used regex for string length validation: {regex_for_str_validation}")
+        if not is_string_valid:
             logger.error(
                 f"Length of {value} is {len(value)}. Expected limit is between {string_min_length} and {string_max_length}"
             )
@@ -118,4 +128,5 @@ class RateAPIValidation(Validation):
         except SQLInjectionError:
             raise ValidationError("The Value of Origin/Dest have possible SQL injection")
 
+        logger.info("Successfully Validated data for RateAPI")
         return param_data

@@ -13,6 +13,7 @@ class RateAPIDataFormat:
         list_of_dicts = []
 
         # For checking if there is any price in the queried data
+        # If there is no price then returning a appropriote message
         is_price_available = False
         for row in raw_query_data:
             list_of_dicts.append(dict(zip(self.avg_price_query_keys, row)))
