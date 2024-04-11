@@ -28,13 +28,6 @@ def get_avg_price_daywise():
         logger.error(f"Failed to Execute Query {request.args} Error {e}")
         return jsonify({"message": str(e)}), 400
 
-    is_price_available, final_output = RateAPIDataFormat().format_avg_price_query_data(data)
-
-    # Returning no data if the all average prices is null
-    if not is_price_available:
-        return (
-            jsonify({"message": "Average price is not available for given period and regions"}),
-            200,
-        )
+    final_output = RateAPIDataFormat().format_avg_price_query_data(data)
 
     return jsonify(final_output), 200

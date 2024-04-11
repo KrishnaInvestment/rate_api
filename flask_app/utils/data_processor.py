@@ -19,7 +19,10 @@ class RateAPIDataFormat:
             if row[1]:
                 is_price_available = True
         logger.info("Completed avg price query data formatting")
-        return is_price_available, list_of_dicts
+        if is_price_available:
+            return list_of_dicts
+        else:
+            return {"message": "Average price is not available for given period and regions"}
 
     def create_avg_price_query_args(self, validated_data):
         # Extract region and date parameters from validated data

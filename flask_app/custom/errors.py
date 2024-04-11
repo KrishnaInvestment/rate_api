@@ -16,3 +16,11 @@ class ValidationError(Exception):
 
 class SQLInjectionError(Exception):
     """Custom exception for SQL injection attempts."""
+
+
+class DateOrderMismatchedError(Exception):
+    """Custom exception for Date order mismatched."""
+
+
+class StringLengthExceedError(Exception):
+    """Custom exception for Date order mismatched."""

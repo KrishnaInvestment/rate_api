@@ -52,7 +52,7 @@ class TestRateAPI(unittest.TestCase, TestDBUtils):
         """
         response = self.client.get("rates/?date_from='2024-01-01")
         self.assertEqual(response.status_code, 400)
-        message = "Received key and required keys are not matching. Please make sure request contains date_from, date_to, destination, origin."
+        message = "Received key and required keys are not matching. Please make sure request contains date_from, date_to, origin, destination."
         self.assertEqual(response.json["message"], message)
 
     def test_non_validated_date(self):
@@ -79,10 +79,20 @@ class TestRateAPI(unittest.TestCase, TestDBUtils):
         """
         Test if SQL injection is prevented.
         """
-        url = "rates/?date_from=2023-01-03&date_to=2016-01-03&origin=CNSGH&destination=select slug from regions"
+        url = "rates/?date_from=2016-01-03&date_to=2016-01-03&origin=CNSGH&destination=select slug from regions"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         message = "The Value of Origin/Dest have possible SQL injection"
+        self.assertEqual(response.json["message"], message)
+
+    def test_non_ordered_date(self):
+        """
+        Test if SQL injection is prevented.
+        """
+        url = "rates/?date_from=2023-01-03&date_to=2016-01-03&origin=CNSGH&destination=select slug from regions"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+        message = "Order of date_from 2023-01-03 and date_to 2016-01-03 mismatched"
         self.assertEqual(response.json["message"], message)
 
     def test_non_available_regions_data(self):
